@@ -102,6 +102,10 @@
   .lb-next{right:clamp(8px,2vw,32px)}
   .lb-foot{height:24px}
 
+  @media (min-width:1101px){
+    :root{--gutter:clamp(64px,7vw,112px)}
+    .wrap{max-width:1400px}
+  }
   @media (max-width:1100px){
     :root{--gallery-columns:2;--feature-grid:minmax(0,1fr) minmax(0,.95fr);--hero-overlap:64px}
     h1{font-size:clamp(48px,6.6vw,72px)}
@@ -280,21 +284,11 @@
   var reel = document.getElementById('reelPlayer');
   var heroBtn = document.getElementById('heroSound');
   var reelBtn = document.getElementById('reelSound');
-
-  function attach(v){
-    var src = v.getAttribute('data-src');
-    if (window.Hls && Hls.isSupported()) {
-      var h = new Hls({ capLevelToPlayerSize: true });
-      h.loadSource(src); h.attachMedia(v);
-    } else { v.src = src; } // Safari and iPhone play HLS natively
-  }
-  attach(hero); attach(reel);
-  // Make sure a film that should be playing starts once its stream is ready
-  [hero, reel].forEach(function(v){
-    v.addEventListener('canplay', function(){ if (v.paused) v.play().catch(function(){}); }, { once: true });
-  });
-
   var state = 'none'; // which film has sound: 'hero' | 'reel' | 'none'
+  var soundRequest = 0;
+  var autoSoundPending = true;
+  var userChoseSound = false;
+  var soundGestures = ['click', 'touchend', 'keydown'];
 
   function render(){
     heroBtn.setAttribute('aria-pressed', state === 'hero');
@@ -304,48 +298,88 @@
     reelBtn.querySelector('.label').textContent = state === 'reel' ? 'Couper le son' : 'Activer le son';
     reelBtn.setAttribute('aria-label', state === 'reel' ? 'Couper le son du second film' : 'Activer le son du second film');
   }
-  function setState(next){
+  function applySound(next){
     state = next;
-    hero.muted = next !== 'hero';
-    reel.muted = next !== 'reel';
-    if (next === 'hero') { hero.volume = 1; hero.play().catch(function(){}); }
-    if (next === 'reel') { reel.volume = 1; reel.play().catch(function(){}); }
+    hero.muted = true;
+    reel.muted = true;
+    if (next === 'hero') { hero.volume = 1; hero.muted = false; }
+    if (next === 'reel') { reel.volume = 1; reel.muted = false; }
     render();
   }
-
-  // The main film tries to start with sound. If the browser refuses
-  // (most do until the visitor has interacted with the page), it plays
-  // muted and the sound turns on at the first click, tap or key press.
-  var waitingForGesture = false;
+  function playSafely(v){
+    var p = v.play();
+    if (p && p.catch) p.catch(function(){});
+  }
+  function removeSoundGestures(){
+    soundGestures.forEach(function(t){ document.removeEventListener(t, firstGesture, true); });
+  }
+  function setState(next, automatic){
+    var request = ++soundRequest;
+    if (!automatic) {
+      userChoseSound = true;
+      autoSoundPending = false;
+      removeSoundGestures();
+    }
+    applySound(next);
+    if (next === 'none') return;
+    var player = next === 'hero' ? hero : reel;
+    function succeeded(){
+      if (request !== soundRequest) return;
+      autoSoundPending = false;
+      removeSoundGestures();
+      render();
+    }
+    function rejected(){
+      if (request !== soundRequest) return;
+      applySound('none');
+      playSafely(player);
+      // Browser autoplay restrictions require a real click, tap or key press.
+      autoSoundPending = automatic && !userChoseSound;
+    }
+    var p = player.play();
+    if (p && p.then) p.then(succeeded, rejected);
+    else succeeded();
+  }
   function startHero(){
-    hero.muted = false; hero.volume = 1;
-    var p = hero.play();
-    if (p && p.then) {
-      p.then(function(){ state = 'hero'; render(); })
-       .catch(function(){
-         hero.muted = true;
-         hero.play().catch(function(){});
-         waitingForGesture = true;
-       });
-    } else { state = 'hero'; render(); }
+    if (autoSoundPending && !userChoseSound) setState('hero', true);
   }
-  function firstGesture(){
-    if (waitingForGesture) setState('hero');
-    waitingForGesture = false;
-    ['pointerdown','keydown','touchstart'].forEach(function(t){ document.removeEventListener(t, firstGesture, true); });
+  function firstGesture(e){
+    if (!autoSoundPending || userChoseSound) return;
+    // Let either sound button make its own choice, without a double toggle.
+    if (e.target instanceof Element && e.target.closest('.sound')) return;
+    if (e.type === 'keydown' && (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.key === 'Escape')) return;
+    setState('hero', true);
   }
-  ['pointerdown','keydown','touchstart'].forEach(function(t){ document.addEventListener(t, firstGesture, true); });
-  reel.muted = true; reel.play().catch(function(){});
-  startHero();
 
   heroBtn.addEventListener('click', function(e){
-    e.stopPropagation(); waitingForGesture = false;
-    setState(state === 'hero' ? 'none' : 'hero');
+    e.stopPropagation();
+    setState(state === 'hero' ? 'none' : 'hero', false);
   });
   reelBtn.addEventListener('click', function(e){
-    e.stopPropagation(); waitingForGesture = false;
-    setState(state === 'reel' ? 'none' : 'reel');
+    e.stopPropagation();
+    setState(state === 'reel' ? 'none' : 'reel', false);
   });
+  soundGestures.forEach(function(t){ document.addEventListener(t, firstGesture, true); });
+
+  function attach(v, ready){
+    var src = v.getAttribute('data-src');
+    if (window.Hls && Hls.isSupported()) {
+      var h = new Hls({ capLevelToPlayerSize: true });
+      h.on(Hls.Events.MANIFEST_PARSED, ready);
+      h.loadSource(src);
+      h.attachMedia(v);
+    } else {
+      v.src = src; // Safari and iPhone play HLS natively.
+      ready();
+    }
+  }
+  applySound('none');
+  [hero, reel].forEach(function(v){
+    v.addEventListener('canplay', function(){ if (v.paused) playSafely(v); }, { once: true });
+  });
+  // Try audible autoplay when the stream is attached, before falling back to gestures.
+  attach(hero, startHero);
+  attach(reel, function(){ playSafely(reel); });
 
   /* ---------- Lightbox ---------- */
   var lb = document.getElementById('lightbox');
