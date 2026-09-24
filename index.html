@@ -27,8 +27,8 @@
     --gutter:clamp(16px, 4vw, 56px);
     --gallery-gap:18px;
     --gallery-columns:3;
-    --feature-grid:repeat(2,minmax(0,1fr)) minmax(0,1.35fr);
-    --hero-overlap:clamp(240px,24vw,340px);
+    --feature-grid:repeat(3,minmax(0,1fr));
+    --hero-overlap:clamp(64px,6vw,88px);
     color-scheme:light;
   }
   *{box-sizing:border-box}
@@ -46,7 +46,7 @@
   .nav img{height:40px;width:auto}
   .nav .wordmark{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em}
   .nav span{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;opacity:.85}
-  .hero{display:grid;grid-template-columns:var(--feature-grid);gap:var(--gallery-gap);align-items:start;padding-top:clamp(24px,3vw,44px)}
+  .hero{display:grid;grid-template-columns:var(--feature-grid);gap:var(--gallery-gap);align-items:start;padding-top:clamp(40px,4vw,56px)}
   .hero-text{grid-column:1 / -2;align-self:center;min-width:0;display:flex;flex-direction:column;gap:clamp(20px,3vw,32px);padding-block:clamp(44px,7vw,96px) clamp(60px,7vw,96px)}
   .eyebrow{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;color:var(--sun);display:flex;align-items:center;gap:12px}
   .eyebrow::before{content:"";width:28px;height:2px;background:currentColor}
@@ -103,17 +103,17 @@
   .lb-foot{height:24px}
 
   @media (max-width:1100px){
-    :root{--gallery-columns:2;--feature-grid:minmax(0,1fr) minmax(0,1.15fr);--hero-overlap:clamp(180px,24vw,260px)}
+    :root{--gallery-columns:2;--feature-grid:minmax(0,1fr) minmax(0,.95fr);--hero-overlap:64px}
     h1{font-size:clamp(48px,6.6vw,72px)}
     .gallery-intro{align-items:flex-start;flex-direction:column}
   }
   @media (max-width:700px){
-    :root{--gallery-gap:10px;--hero-overlap:96px}
+    :root{--gallery-gap:10px;--hero-overlap:32px}
     .lb-stage img{max-height:calc(100dvh - 220px)}
-    .hero{grid-template-columns:1fr;gap:28px}
+    .hero{grid-template-columns:1fr;gap:36px}
     .hero-text{grid-column:1 / -1;padding:0 0 8px;gap:20px}
     h1{font-size:clamp(52px,12vw,80px)}
-    .hero .film{grid-column:1 / -1;width:100%;max-width:440px;justify-self:center}
+    .hero .film{grid-column:1 / -1;width:100%;max-width:380px;justify-self:center}
     .nav img{height:32px}
     .gallery-head{display:block;padding-top:calc(var(--hero-overlap) + 40px)}
     .gallery-intro{gap:12px}
