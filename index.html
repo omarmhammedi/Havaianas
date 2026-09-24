@@ -288,7 +288,7 @@
   var soundRequest = 0;
   var autoSoundPending = true;
   var userChoseSound = false;
-  var soundGestures = ['click', 'touchend', 'keydown'];
+  var soundGestures = ['pointerdown', 'touchstart', 'click', 'touchend', 'keydown'];
 
   function render(){
     heroBtn.setAttribute('aria-pressed', state === 'hero');
@@ -361,25 +361,25 @@
   });
   soundGestures.forEach(function(t){ document.addEventListener(t, firstGesture, true); });
 
-  function attach(v, ready){
+  function attach(v){
     var src = v.getAttribute('data-src');
     if (window.Hls && Hls.isSupported()) {
       var h = new Hls({ capLevelToPlayerSize: true });
-      h.on(Hls.Events.MANIFEST_PARSED, ready);
       h.loadSource(src);
       h.attachMedia(v);
     } else {
       v.src = src; // Safari and iPhone play HLS natively.
-      ready();
     }
   }
   applySound('none');
   [hero, reel].forEach(function(v){
     v.addEventListener('canplay', function(){ if (v.paused) playSafely(v); }, { once: true });
   });
-  // Try audible autoplay when the stream is attached, before falling back to gestures.
-  attach(hero, startHero);
-  attach(reel, function(){ playSafely(reel); });
+  // Match the original: try sound immediately, then retry on the first press or touch.
+  attach(hero);
+  attach(reel);
+  playSafely(reel);
+  startHero();
 
   /* ---------- Lightbox ---------- */
   var lb = document.getElementById('lightbox');
